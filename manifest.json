@@ -1,0 +1,8 @@
+{
+  "type": "preload-native",
+  "name": "Visual Ore",
+  "author": "Fuwnan",
+  "version": "1.0.0",
+  "entry": "libvisual_ore.so",
+  "minecraft_versions": []
+}
