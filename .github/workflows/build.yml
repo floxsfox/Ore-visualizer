@@ -1,4 +1,4 @@
-name: build-visual-ore
+name: build-visual-outline
 
 on:
   push:
@@ -32,14 +32,14 @@ jobs:
 
       - name: Package .levipack
         run: |
-          mkdir -p dist/visual-ore
-          cp manifest.json dist/visual-ore/
-          cp build/out/arm64-v8a/libvisual_ore.so dist/visual-ore/
-          (cd dist/visual-ore && zip -r ../visual-ore.levipack .)
+          mkdir -p dist/visual-outline
+          cp manifest.json dist/visual-outline/
+          cp build/out/arm64-v8a/libvisual_outline.so dist/visual-outline/
+          (cd dist/visual-outline && zip -r ../visual-outline.levipack .)
 
       - uses: actions/upload-artifact@v4
         with:
-          name: visual-ore
+          name: visual-outline
           path: |
-            dist/visual-ore.levipack
-            dist/visual-ore/libvisual_ore.so        
+            dist/visual-outline.levipack
+            dist/visual-outline/libvisual_outline.so
