@@ -1,12 +1,17 @@
 #pragma once
 
+#include <atomic>
+#include <csetjmp>
+#include <csignal>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <mutex>
 #include <string>
+#include <type_traits>
 
 #include <fcntl.h>
+#include <signal.h>
 #include <unistd.h>
 
 namespace vo::engine {
@@ -75,6 +80,61 @@ inline uintptr_t decodeAdrpAdd(const uint32_t* code, uint32_t rd) {
     uintptr_t off = (add >> 10) & 0xFFFu;
     if ((add >> 22) & 1u) off <<= 12;
     return page + off;
+}
+
+// ---------------------------------------------------------------------------
+// Pengaman crash: kalau kode game yang kita panggil (getBlock, tessellator) kena
+// SIGSEGV/SIGBUS saat dijalankan lewat guarded(), eksekusi dikembalikan ke guarded()
+// dan hasilnya false -> pemanggil bisa berhenti dengan aman. Di luar guarded(),
+// sinyal diteruskan ke handler lama (crash normal / debuggerd).
+// Aturan: isi fungsi yang dijaga jangan memegang objek C++ dengan destruktor.
+inline thread_local sigjmp_buf *g_tlsJmp = nullptr;
+inline struct sigaction g_oldSegv;
+inline struct sigaction g_oldBus;
+inline std::atomic_bool g_guardInstalled{false};
+
+inline void faultHandler(int sig, siginfo_t *info, void *ctx) {
+    if (g_tlsJmp) siglongjmp(*g_tlsJmp, 1);
+    const struct sigaction &old = (sig == SIGBUS) ? g_oldBus : g_oldSegv;
+    if (old.sa_flags & SA_SIGINFO) {
+        if (old.sa_sigaction) {
+            old.sa_sigaction(sig, info, ctx);
+            return;
+        }
+    } else if (old.sa_handler != SIG_DFL && old.sa_handler != SIG_IGN) {
+        old.sa_handler(sig);
+        return;
+    }
+    signal(sig, SIG_DFL); // return -> instruksi yang sama fault lagi -> crash normal
+}
+
+inline bool installFaultGuard() {
+    if (g_guardInstalled.exchange(true)) return true;
+    struct sigaction sa;
+    std::memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = faultHandler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_SIGINFO | SA_NODEFER;
+    const bool ok = sigaction(SIGSEGV, &sa, &g_oldSegv) == 0 && sigaction(SIGBUS, &sa, &g_oldBus) == 0;
+    return ok;
+}
+
+inline bool runGuarded(void (*fn)(void *), void *arg) {
+    sigjmp_buf jb;
+    if (sigsetjmp(jb, 0) != 0) {
+        g_tlsJmp = nullptr;
+        return false;
+    }
+    g_tlsJmp = &jb;
+    fn(arg);
+    g_tlsJmp = nullptr;
+    return true;
+}
+
+template <typename F>
+inline bool guarded(F &&f) {
+    using Fn = std::remove_reference_t<F>;
+    return runGuarded([](void *p) { (*static_cast<Fn *>(p))(); }, &f);
 }
 
 } // namespace vo::engine

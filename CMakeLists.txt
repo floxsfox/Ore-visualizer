@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(visual_ore LANGUAGES CXX)
+project(visual_outline LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -58,15 +58,15 @@ endif()
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/out/${ANDROID_ABI}")
 find_library(VO_LOG_LIB log)
 
-add_library(visual_ore SHARED VisualOre.cpp)
-set_target_properties(visual_ore PROPERTIES OUTPUT_NAME "visual_ore")
-target_include_directories(visual_ore PRIVATE
+add_library(visual_outline SHARED VisualOre.cpp)
+set_target_properties(visual_outline PROPERTIES OUTPUT_NAME "visual_outline")
+target_include_directories(visual_outline PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}"
     "${PRELOADER_ANDROID_ROOT}/include")
-target_link_libraries(visual_ore PRIVATE
+target_link_libraries(visual_outline PRIVATE
     nlohmann_json::nlohmann_json Boost::pfr magic_enum::magic_enum fmt::fmt preloader)
 if(VO_LOG_LIB)
-    target_link_libraries(visual_ore PRIVATE "${VO_LOG_LIB}")
+    target_link_libraries(visual_outline PRIVATE "${VO_LOG_LIB}")
 endif()
-target_compile_options(visual_ore PRIVATE
+target_compile_options(visual_outline PRIVATE
     -Wall -Wextra -fvisibility=hidden -fvisibility-inlines-hidden)
